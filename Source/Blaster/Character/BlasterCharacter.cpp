@@ -7,6 +7,8 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
+#include "InputMappingContext.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -20,33 +22,60 @@ ABlasterCharacter::ABlasterCharacter()
 	this->CameraBoom->SetupAttachment(GetMesh());
 	this->CameraBoom->TargetArmLength = 600.f;
 	this->CameraBoom->bUsePawnControlRotation = true;
+	this->CameraBoom->SetRelativeLocation(FVector(0, 0, 161));
 
 	//Setting of the Camera
 	this->FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	this->FollowCamera->bUsePawnControlRotation = false;
+
+	bUseControllerRotationYaw = false;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
 }
 
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//Input mapping
+	// In your cpp...
 	if (APlayerController* PlayerController = Cast<APlayerController>(this->GetController()))
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* SubSystem{
-			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer())
-		})
+		if (UEnhancedInputLocalPlayerSubsystem* InputSystem = ULocalPlayer::GetSubsystem<
+			UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
-			SubSystem->AddMappingContext(this->InputMappingContext, 0);
+			if (!InputMapping.IsNull())
+			{
+				InputSystem->AddMappingContext(InputMapping.LoadSynchronous(), 0);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("Input mapping is null"));
+			}
 		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Input System is NULL!!!\n Couldn't map the input"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Couldn't get LOCAL PLAYER"));
 	}
 }
 
 
-void
-ABlasterCharacter::Tick(float DeltaTime)
+void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	auto velocity = GetVelocity();
+
+	auto ActorLocation = this->GetActorLocation();
+	auto Velocity = GetVelocity();
+	
+	/*
+	DrawDebugString(this->GetWorld(), ActorLocation, velocity.ToString(), nullptr, FColor::Red,0,true);
+	DrawDebugDirectionalArrow(this->GetWorld(),ActorLocation,Velocity+ActorLocation,100,FColor::Emerald,false,0,1,10);
+	*/
+	
 }
 
 
@@ -55,12 +84,10 @@ ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
 	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		//	Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 		//	Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ABlasterCharacter::Move);
 		//	Looking
