@@ -1,5 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+// ReSharper disable CppRedundantAccessSpecifier
 #pragma once
 
 #include "CoreMinimal.h"
@@ -18,22 +19,33 @@ public:
 	ABlasterCharacter();
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
 	virtual void BeginPlay() override;
 
 	
 private:
-	/*	CAMERA	*/
-	
+	//	CAMERA
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class USpringArmComponent* CameraBoom;
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent* FollowCamera;
-	
 private:
-	/*	INPUT	*/
-	
+	//	HUD
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UWidgetComponent* OverheadWidget;
+
+private:
+	//	Weapon - WidgetPickup displays only for the player that collides with the weapon
+	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
+	class AWeapon* OverlappingWeapon;
+
+	UFUNCTION()
+	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
+
+private:
+	//	INPUT
 	UPROPERTY(EditAnywhere, Category=Input)
 	TSoftObjectPtr<UInputMappingContext> InputMapping;
 	
@@ -50,8 +62,8 @@ protected:
 	void Look(const FInputActionValue& Value);
 	
 public:
-
+	void SetOverlappingWeapon(AWeapon* Weapon);
+protected:
+	void DrawDebugVelocityVector();
 	
-
-
 };

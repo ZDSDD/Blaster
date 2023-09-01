@@ -8,7 +8,10 @@
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "InputMappingContext.h"
+#include "Blaster/Weapon/Weapon.h"
+#include "Components/WidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Net/UnrealNetwork.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -30,6 +33,9 @@ ABlasterCharacter::ABlasterCharacter()
 
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+
+	this->OverheadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("Overhead Widget"));
+	this->OverheadWidget->SetupAttachment(RootComponent);
 }
 
 void ABlasterCharacter::BeginPlay()
@@ -48,17 +54,30 @@ void ABlasterCharacter::BeginPlay()
 			}
 			else
 			{
-				UE_LOG(LogTemp, Error, TEXT("Input mapping is null"));
+				UE_LOG(LogTemp, Error, TEXT("ABlasterCharacter::BeginPlay\t Input mapping is null"));
 			}
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("Input System is NULL!!!\n Couldn't map the input"));
+			UE_LOG(LogTemp, Error,
+			       TEXT("ABlasterCharacter::BeginPlay\t Input System is NULL!!!\n Couldn't map the input"));
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("Couldn't get LOCAL PLAYER"));
+		UE_LOG(LogTemp, Error, TEXT("ABlasterCharacter::BeginPlay\t Couldn't get LOCAL PLAYER"));
+	}
+}
+
+void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
+{
+	if (OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(true);
+	}
+	if(LastWeapon)
+	{
+		LastWeapon->ShowPickupWidget(false);
 	}
 }
 
@@ -66,16 +85,6 @@ void ABlasterCharacter::BeginPlay()
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	auto velocity = GetVelocity();
-
-	auto ActorLocation = this->GetActorLocation();
-	auto Velocity = GetVelocity();
-	
-	/*
-	DrawDebugString(this->GetWorld(), ActorLocation, velocity.ToString(), nullptr, FColor::Red,0,true);
-	DrawDebugDirectionalArrow(this->GetWorld(),ActorLocation,Velocity+ActorLocation,100,FColor::Emerald,false,0,1,10);
-	*/
-	
 }
 
 
@@ -93,6 +102,13 @@ ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		//	Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABlasterCharacter::Look);
 	}
+}
+
+void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
 }
 
 void ABlasterCharacter::Move(const FInputActionValue& Value)
@@ -129,4 +145,30 @@ void ABlasterCharacter::Look(const FInputActionValue& Value)
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
 	}
+}
+
+void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
+{
+	if(this->OverlappingWeapon)
+	{
+		this->OverlappingWeapon->ShowPickupWidget(false);
+	}
+	this->OverlappingWeapon = Weapon;
+
+	if (IsLocallyControlled() && OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(true);
+	}
+}
+
+void ABlasterCharacter::DrawDebugVelocityVector()
+{
+	auto velocity = GetVelocity();
+	auto ActorLocation = this->GetActorLocation();
+	auto Velocity = GetVelocity();
+
+
+	DrawDebugString(this->GetWorld(), ActorLocation, velocity.ToString(), nullptr, FColor::Red, 0, true);
+	DrawDebugDirectionalArrow(this->GetWorld(), ActorLocation, Velocity + ActorLocation, 100, FColor::Emerald, false, 0,
+	                          1, 10);
 }
