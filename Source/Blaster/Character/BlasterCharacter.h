@@ -5,10 +5,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Blaster/BlasterTypes/TurningInPlace.h"
 #include "InputActionValue.h"
+#include "Blaster/BlasterComponents/CombatComponent.h"
 #include "BlasterCharacter.generated.h"
 
+class AWeapon;
 class UInputMappingContext;
+class UInputAction;
 
 UCLASS()
 class BLASTER_API ABlasterCharacter : public ACharacter
@@ -20,17 +24,18 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
+	virtual void PostInitializeComponents() override;
+
 protected:
 	virtual void BeginPlay() override;
 
-	
 private:
 	//	CAMERA
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class USpringArmComponent* CameraBoom;
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent* FollowCamera;
+
 private:
 	//	HUD
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -39,31 +44,68 @@ private:
 private:
 	//	Weapon - WidgetPickup displays only for the player that collides with the weapon
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
-	class AWeapon* OverlappingWeapon;
+	AWeapon* OverlappingWeapon;
 
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
 private:
+	//	COMBAT
+	UPROPERTY(VisibleAnywhere)
+	class UCombatComponent* CombatComponent;
+
+	UFUNCTION(Server, Reliable)
+	void ServerEquipButtonPressed();
+
+private:
 	//	INPUT
 	UPROPERTY(EditAnywhere, Category=Input)
 	TSoftObjectPtr<UInputMappingContext> InputMapping;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* MoveAction;
+	UInputAction* MoveAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* JumpAction;
+	UInputAction* JumpAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* LookAction;
+	UInputAction* LookAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* EquipAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* CrouchAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* AimAction;
 
 protected:
 	void Move(const FInputActionValue& Value);
-
 	void Look(const FInputActionValue& Value);
+	void EquipButtonPressed();
+	void CrouchButtonPresses();
+	void CrouchButtonReleased();
+	void AimButtonPressed();
+	void AimButtonReleased();
+	void AimOffset(float DeltaTime);
+
+public: 	//Setters
+	void SetOverlappingWeapon(AWeapon* Weapon);
+	
+public:		//Getters
+	bool IsWeaponEquipped() const;
+	bool IsAiming();
+	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; }
+	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; }
+	AWeapon* GetEquippedWeapon();
+	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; }
 	
 public:
-	void SetOverlappingWeapon(AWeapon* Weapon);
+	void TurnInPlace(float DeltaTime);
+
 protected:
 	void DrawDebugVelocityVector();
-	
+
+private:
+	float AO_Yaw;
+	float InterpAO_Yaw;
+	float AO_Pitch;
+	FRotator StartingAimRotation;
+	ETurningInPlace TurningInPlace;
 };
