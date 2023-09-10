@@ -4,10 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-
 #include "CombatComponent.generated.h"
 
-
+#define TRACE_LENGTH 80'000.f;
 class AWeapon;
 class ABlasterCharacter;
 
@@ -21,35 +20,57 @@ public:
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
+
+public:
 	friend class ABlasterCharacter;
 
+public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+public:
 	void EquipWeapon(AWeapon* WeaponToEquip);
 
 protected:
 	virtual void BeginPlay() override;
 
-	void SetAiming(bool bAiming);
-
+protected:
 	UFUNCTION(Server, Reliable)
 	void ServerSetAiming(bool bAiming);
 
 	UFUNCTION()
 	void OnRep_EquippedWeapon();
 
+	UFUNCTION(Server, Reliable)
+	void ServerFire(const FVector_NetQuantize& TraceHitTarget);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastFire(const FVector_NetQuantize& TraceHitTarget);
+
+protected:
+	void SetAiming(bool bAiming);
+
+	void FireButtonPressed(bool Pressed);
+
+	void TraceUnderCrosshair(FHitResult& TraceHitResult);
+
 private:
 	ABlasterCharacter* Character;
 
+private:
 	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
 	AWeapon* EquippedWeapon;
 
 	UPROPERTY(Replicated)
 	bool bIsAiming;
 
+private:
 	UPROPERTY(EditAnywhere)
 	float BaseWalkSpeed;
-	
+
 	UPROPERTY(EditAnywhere)
 	float AimWalkSpeed;
+
+private:
+	bool bFireButtonPressed{};
+	
 };

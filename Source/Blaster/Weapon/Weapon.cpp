@@ -3,6 +3,8 @@
 
 #include "Weapon.h"
 
+#include "Casing.h"
+#include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Blaster/Character/BlasterCharacter.h"
@@ -12,7 +14,7 @@ AWeapon::AWeapon()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
-	
+
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	//this->WeaponMesh->SetupAttachment(RootComponent);
 	SetRootComponent(WeaponMesh);
@@ -34,13 +36,12 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AWeapon, WeaponState);
-	
 }
 
 void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (HasAuthority())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("PLAYER HAS AUTHORITY"));
@@ -128,5 +129,30 @@ void AWeapon::ShowPickupWidget(const bool bShowWidget)
 	if (PickupWidget)
 	{
 		PickupWidget->SetVisibility(bShowWidget);
+	}
+}
+
+void AWeapon::Fire(const FVector& HitTarget)
+{
+	if (FireAnimation)
+	{
+		WeaponMesh->PlayAnimation(FireAnimation, false);
+	}
+	if (CasingClass)
+	{
+		const USkeletalMeshSocket* AmmoEjectSocket{GetWeaponMesh()->GetSocketByName(FName("AmmoEject"))};
+		if (AmmoEjectSocket)
+		{
+			const FTransform SocketTransform{AmmoEjectSocket->GetSocketTransform(WeaponMesh)};
+			UWorld* const World{GetWorld()};
+			if (World)
+			{
+				World->SpawnActor<ACasing>(
+					CasingClass,
+					SocketTransform.GetLocation(),
+					SocketTransform.GetRotation().Rotator()
+				);
+			}
+		}
 	}
 }
