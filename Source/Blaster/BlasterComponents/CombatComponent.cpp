@@ -6,6 +6,8 @@
 #include "ParticleHelper.h"
 #include "Blaster/Character/BlasterCharacter.h"
 #include "Blaster/Weapon/Weapon.h"
+#include "Blaster/PlayerController/Blaster_PlayerController.h"
+#include "Blaster/HUD/BlasterHUD.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/SkeletalMeshSocket.h"
@@ -37,6 +39,14 @@ void UCombatComponent::BeginPlay()
 	{
 		Character->GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 	}
+}
+
+void UCombatComponent::TickComponent(const float DeltaTime, const ELevelTick TickType,
+                                     FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	SetHUDCrosshairs(DeltaTime);
 }
 
 void UCombatComponent::SetAiming(bool bAiming)
@@ -88,7 +98,7 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 	{
 		GEngine->GameViewport->GetViewportSize(ViewportSize);
 	}
-	
+
 	FVector2D CrosshairLocation(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
 	FVector CrosshairWorldPosition;
 	FVector CrosshairWorldDirection;
@@ -98,8 +108,8 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 		CrosshairWorldPosition,
 		CrosshairWorldDirection
 	);
-	
-	if(ScreenToWorld)
+
+	if (ScreenToWorld)
 	{
 		FVector Start = CrosshairWorldPosition;
 		FVector End = Start + CrosshairWorldDirection * TRACE_LENGTH;
@@ -109,6 +119,36 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 			End,
 			ECC_Visibility);
 	}
+}
+
+void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
+{
+	if (!Character || !Character->Controller) return;
+	
+	Controller = Controller == nullptr ? Cast<ABlaster_PlayerController>(Character->Controller) : Controller;
+	if (!Controller) return;
+	
+	HUD = HUD == nullptr ? Cast<ABlasterHUD>(Controller->GetHUD()) : HUD;
+	if (!HUD) return;
+
+	FHUDPackage FHUDPackage;
+	if (EquippedWeapon)
+	{
+		FHUDPackage.Crosshairscenter = EquippedWeapon->CrosshairCenter;
+		FHUDPackage.CrosshairsLeft = EquippedWeapon->CrosshairLeft;
+		FHUDPackage.CrosshairsRight = EquippedWeapon->CrosshairRight;
+		FHUDPackage.CrosshairsTop = EquippedWeapon->CrosshairTop;
+		FHUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairDown;
+	}
+	else
+	{
+		FHUDPackage.Crosshairscenter = nullptr;
+		FHUDPackage.CrosshairsLeft = nullptr;
+		FHUDPackage.CrosshairsRight = nullptr;
+		FHUDPackage.CrosshairsTop = nullptr;
+		FHUDPackage.CrosshairsBottom = nullptr;
+	}
+	HUD->SetHUDPackage(FHUDPackage);
 }
 
 void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
@@ -127,11 +167,6 @@ void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& Trac
 	MulticastFire(TraceHitTarget);
 }
 
-void UCombatComponent::TickComponent(const float DeltaTime, const ELevelTick TickType,
-                                     FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-}
 
 void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 {
