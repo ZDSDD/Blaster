@@ -14,7 +14,16 @@ void UBlasterAnimInstance::NativeInitializeAnimation()
 	BlasterCharacter = Cast<ABlasterCharacter>(TryGetPawnOwner());
 }
 
-void UBlasterAnimInstance::UpdateVariables()
+void UBlasterAnimInstance::UpdateCombatVariables()
+{
+	bWeaponEquipped = BlasterCharacter->IsWeaponEquipped();
+
+	EquippedWeapon = BlasterCharacter->GetEquippedWeapon();
+
+	bIsAiming = BlasterCharacter->IsAiming();
+}
+
+void UBlasterAnimInstance::UpdateMovementVariables()
 {
 	FVector Velocity = BlasterCharacter->GetVelocity();
 	Velocity.Z = 0.f;
@@ -24,14 +33,13 @@ void UBlasterAnimInstance::UpdateVariables()
 
 	bIsAccelerating = BlasterCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0.f ? true : false;
 
-	bWeaponEquipped = BlasterCharacter->IsWeaponEquipped();
-
-	EquippedWeapon = BlasterCharacter->GetEquippedWeapon();
-
 	bIsCrouched = BlasterCharacter->bIsCrouched;
+}
 
-	bIsAiming = BlasterCharacter->IsAiming();
-
+void UBlasterAnimInstance::UpdateVariables()
+{
+	UpdateMovementVariables();
+	UpdateCombatVariables();
 	TurningInPlace = BlasterCharacter->GetTurningInPlace();
 }
 
@@ -86,6 +94,7 @@ void UBlasterAnimInstance::UpdateHandPlacement(float DeltaSeconds)
 	}
 	else
 	{
+		// Corrects the position of clients weapon
 		AO_Pitch += 30;
 		AO_Yaw += 15;
 	}

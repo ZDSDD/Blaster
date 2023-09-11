@@ -16,6 +16,8 @@ class BLASTER_API UBlasterAnimInstance : public UAnimInstance
 	
 public:
 	virtual void NativeInitializeAnimation() override;
+	void UpdateCombatVariables();
+	void UpdateMovementVariables();
 	void UpdateVariables();
 	void UpdateAimOffsetYawAndPitch(float DeltaSeconds);
 	void UpdateHandPlacement(float DeltaSeconds);
