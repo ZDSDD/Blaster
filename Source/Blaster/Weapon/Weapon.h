@@ -31,21 +31,30 @@ public:
 	void ShowPickupWidget(bool bShowWidget);
 	virtual void Fire(const FVector& HitTarget);
 
-	
+
 	/*
 	 * Textures for the weapon crosshairs
 	 */
-	UPROPERTY(EditAnywhere,Category="Crosshairs")
+	UPROPERTY(EditAnywhere, Category="Crosshairs")
 	class UTexture2D* CrosshairCenter;
-	UPROPERTY(EditAnywhere,Category="Crosshairs")
+	UPROPERTY(EditAnywhere, Category="Crosshairs")
 	UTexture2D* CrosshairLeft;
-	UPROPERTY(EditAnywhere,Category="Crosshairs")
+	UPROPERTY(EditAnywhere, Category="Crosshairs")
 	UTexture2D* CrosshairRight;
-	UPROPERTY(EditAnywhere,Category="Crosshairs")
+	UPROPERTY(EditAnywhere, Category="Crosshairs")
 	UTexture2D* CrosshairDown;
-	UPROPERTY(EditAnywhere,Category="Crosshairs")
+	UPROPERTY(EditAnywhere, Category="Crosshairs")
 	UTexture2D* CrosshairTop;
-	
+
+	/*
+	 * Zoomed FOV while aiming
+	 */
+	UPROPERTY(EditAnywhere)
+	float ZoomedFOV{30.f};
+
+	UPROPERTY(EditAnywhere)
+	float ZoomInterpSpeed{20.f};
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -89,8 +98,11 @@ private:
 private:
 	UFUNCTION()
 	void OnRep_WeaponState();
+
 public:
 	void SetWeaponState(const EWeaponState State);
-	FORCEINLINE USphereComponent* GetAreaSphere()const {return AreaSphere; }
-	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh()const {return WeaponMesh;}
+	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }
+	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
+	FORCEINLINE float GetZoomedFOV() const { return ZoomedFOV; }
+	FORCEINLINE float GetZoomInterpSpeed() const { return ZoomInterpSpeed; }
 };

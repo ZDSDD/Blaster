@@ -8,6 +8,7 @@
 #include "Blaster/BlasterTypes/TurningInPlace.h"
 #include "InputActionValue.h"
 #include "Blaster/BlasterComponents/CombatComponent.h"
+#include "Camera/CameraComponent.h"
 #include "BlasterCharacter.generated.h"
 
 class AWeapon;
@@ -99,6 +100,7 @@ public:		//Getters
 	bool IsAiming();
 	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; }
 	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; }
+	FORCEINLINE auto GetCamera() const { return FollowCamera; }
 	AWeapon* GetEquippedWeapon();
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; }
 	FVector GetHitTarget()const;

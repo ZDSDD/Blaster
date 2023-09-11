@@ -80,7 +80,9 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 			bLocallyController = true;
 		}else
 		{
-			
+			//todo: if not locally controller correct the position of the weapon
+			AO_Pitch += 30;
+			AO_Yaw += 15;
 		}
 	}
 }

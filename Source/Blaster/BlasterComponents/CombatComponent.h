@@ -26,6 +26,7 @@ public:
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 public:
 	void EquipWeapon(AWeapon* WeaponToEquip);
 
@@ -73,13 +74,35 @@ private:
 	UPROPERTY(EditAnywhere)
 	float AimWalkSpeed;
 
-	/* Hud And Crosshairs*/
+	/*
+	 * Hud And Crosshairs
+	 */
 
 	float CrosshairVelocityFactor;
 	float CrosshairInAirFactor;
+	float CrosshairAimFactor;
+	float CrosshairShootingFactor;
 
 	FVector HitTarget;
+
+	/*
+	 * Aiming and FOV
+	 */
+
+	//Field of view when not aiming, set to the camera's base FOV in begin play
+	float DefaultFOV;
+
+	UPROPERTY(EditAnywhere, Category="Combat")
+	float ZoomedFOV{30.f};
+
+	float CurrentFOV;
+
+	UPROPERTY(EditAnywhere, Category="Combat")
+	float ZoomInterpSpeed{20.f};
+
+	void InterpFOV(float DeltaTime);
+	
+
 private:
 	bool bFireButtonPressed{};
-	
 };
