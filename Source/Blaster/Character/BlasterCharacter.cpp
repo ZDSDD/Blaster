@@ -42,9 +42,9 @@ ABlasterCharacter::ABlasterCharacter()
 	this->OverheadWidget->SetupAttachment(RootComponent);
 
 	//Combat component
-	 this->CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
-	 this->CombatComponent->SetIsReplicated(true);
-	
+	this->CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+	this->CombatComponent->SetIsReplicated(true);
+
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
@@ -142,16 +142,23 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		//	Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABlasterCharacter::Look);
 		//	Equip
-		EnhancedInputComponent->BindAction(EquipAction, ETriggerEvent::Triggered, this,&ABlasterCharacter::EquipButtonPressed);
+		EnhancedInputComponent->BindAction(EquipAction, ETriggerEvent::Triggered, this,
+		                                   &ABlasterCharacter::EquipButtonPressed);
 		//	Crouch
-		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Triggered, this,&ABlasterCharacter::CrouchButtonPresses);
-		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this,&ABlasterCharacter::CrouchButtonReleased);
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Triggered, this,
+		                                   &ABlasterCharacter::CrouchButtonPresses);
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this,
+		                                   &ABlasterCharacter::CrouchButtonReleased);
 		//	Aim
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Triggered, this,&ABlasterCharacter::AimButtonPressed);
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this,&ABlasterCharacter::AimButtonReleased);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Triggered, this,
+		                                   &ABlasterCharacter::AimButtonPressed);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this,
+		                                   &ABlasterCharacter::AimButtonReleased);
 		//	Shoot
-		EnhancedInputComponent->BindAction(FireAction,ETriggerEvent::Triggered,this,&ABlasterCharacter::FireButtonPressed);
-		EnhancedInputComponent->BindAction(FireAction,ETriggerEvent::Completed,this,&ABlasterCharacter::FireButtonReleased);
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered, this,
+		                                   &ABlasterCharacter::FireButtonPressed);
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Canceled, this,
+		                                   &ABlasterCharacter::FireButtonReleased);
 	}
 }
 
@@ -174,10 +181,10 @@ void ABlasterCharacter::PostInitializeComponents()
 
 void ABlasterCharacter::PlayFireMontage(bool bAiming)
 {
-	if(!CombatComponent || !CombatComponent->EquippedWeapon) return;
+	if (!CombatComponent || !CombatComponent->EquippedWeapon) return;
 
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if(AnimInstance && FireMontage)
+	if (AnimInstance && FireMontage)
 	{
 		AnimInstance->Montage_Play(FireMontage);
 		FName SectionName = bAiming ? FName("RifleAim") : FName("RifleHip");
@@ -279,21 +286,29 @@ void ABlasterCharacter::AimOffset(float DeltaTime)
 
 void ABlasterCharacter::FireButtonPressed()
 {
-	if(CombatComponent)
+	if (CombatComponent)
 	{
 		CombatComponent->FireButtonPressed(true);
-		UE_LOG(LogTemp,Warning,TEXT("FireButtonPressed"));
 	}
 }
 
 void ABlasterCharacter::FireButtonReleased()
 {
-	if(CombatComponent)
+	if (CombatComponent)
 	{
 		CombatComponent->FireButtonPressed(false);
-		UE_LOG(LogTemp,Warning,TEXT("FireButtonReleased"));
+		UE_LOG(LogTemp, Warning, TEXT("FireButtonReleased"));
 	}
-	
+}
+
+FVector ABlasterCharacter::GetHitTarget() const
+{
+	if (CombatComponent)
+	{
+		return CombatComponent->HitTarget;
+	}
+
+	return FVector();
 }
 
 void ABlasterCharacter::TurnInPlace(float DeltaTime)

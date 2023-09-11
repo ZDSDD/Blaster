@@ -45,8 +45,13 @@ void UCombatComponent::TickComponent(const float DeltaTime, const ELevelTick Tic
                                      FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
 	SetHUDCrosshairs(DeltaTime);
+	if (Character && Character->IsLocallyControlled())
+	{
+		FHitResult HitResult;
+		TraceUnderCrosshair(HitResult);
+		HitTarget = HitResult.ImpactPoint;
+	}
 }
 
 void UCombatComponent::SetAiming(bool bAiming)
@@ -113,21 +118,24 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 	{
 		FVector Start = CrosshairWorldPosition;
 		FVector End = Start + CrosshairWorldDirection * TRACE_LENGTH;
-		GetWorld()->LineTraceSingleByChannel(
+		if (!GetWorld()->LineTraceSingleByChannel(
 			TraceHitResult,
 			Start,
 			End,
-			ECC_Visibility);
+			ECC_Visibility))
+		{
+			TraceHitResult.ImpactPoint = End;
+		}
 	}
 }
 
 void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
 {
 	if (!Character || !Character->Controller) return;
-	
+
 	Controller = Controller == nullptr ? Cast<ABlaster_PlayerController>(Character->Controller) : Controller;
 	if (!Controller) return;
-	
+
 	HUD = HUD == nullptr ? Cast<ABlasterHUD>(Controller->GetHUD()) : HUD;
 	if (!HUD) return;
 
@@ -148,6 +156,26 @@ void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
 		FHUDPackage.CrosshairsTop = nullptr;
 		FHUDPackage.CrosshairsBottom = nullptr;
 	}
+	//Calculate crosshair spread
+
+	//[0,600] -> [0,1]
+	FVector2d WalkSpeedRange(0.f, Character->GetCharacterMovement()->MaxWalkSpeed);
+	FVector2d VelocityMultiplayerRange(0.f, 1.f);
+	FVector Velocity = Character->GetVelocity();
+	Velocity.Z = 0.f;
+	CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(WalkSpeedRange, VelocityMultiplayerRange,
+	                                                            Velocity.Size());
+
+	if (Character->GetCharacterMovement()->IsFalling())
+	{
+		CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 2.25f, DeltaTime, 2.25f);
+	}
+	else
+	{
+		CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 0.f, DeltaTime, 30.f);
+	}
+
+	FHUDPackage.CrosshairSpread = CrosshairVelocityFactor + CrosshairInAirFactor;
 	HUD->SetHUDPackage(FHUDPackage);
 }
 

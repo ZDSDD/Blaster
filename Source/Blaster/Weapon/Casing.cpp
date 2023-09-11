@@ -13,7 +13,9 @@ ACasing::ACasing()
 
 	CasingMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Casing mesh"));
 	SetRootComponent(CasingMesh);
+	//CasingMesh->SetCollisionObjectType(Bullet);
 	CasingMesh->SetCollisionResponseToChannel(ECC_Camera,ECR_Ignore);
+	CasingMesh->SetCollisionResponseToChannel(ECC_Pawn,ECR_Ignore);
 	CasingMesh->SetSimulatePhysics(true);
 	CasingMesh->SetEnableGravity(true);
 	CasingMesh->SetNotifyRigidBodyCollision(true);
@@ -41,6 +43,7 @@ void ACasing::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitive
 	{
 		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ShellSound, GetActorLocation());
 	}
+	CasingMesh->SetNotifyRigidBodyCollision(false);
 }
 
 

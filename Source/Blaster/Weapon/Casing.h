@@ -30,11 +30,10 @@ private:
 	UPROPERTY(EditAnywhere)
 	class USoundCue* ShellSound;
 
-	UPROPERTY()
 	FTimerHandle TimerHandle;
 
-	UPROPERTY(EditAnywhere)
 	float TimeToDestroy{5.f};
 private:
+	UFUNCTION()
 	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 };

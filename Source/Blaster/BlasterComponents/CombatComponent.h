@@ -26,7 +26,6 @@ public:
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 public:
 	void EquipWeapon(AWeapon* WeaponToEquip);
 
@@ -74,6 +73,12 @@ private:
 	UPROPERTY(EditAnywhere)
 	float AimWalkSpeed;
 
+	/* Hud And Crosshairs*/
+
+	float CrosshairVelocityFactor;
+	float CrosshairInAirFactor;
+
+	FVector HitTarget;
 private:
 	bool bFireButtonPressed{};
 	
