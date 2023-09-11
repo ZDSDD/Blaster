@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Blaster/HUD/BlasterHUD.h"
 #include "CombatComponent.generated.h"
 
 #define TRACE_LENGTH 80'000.f;
+struct FHUDPackage;
 class AWeapon;
 class ABlasterCharacter;
 
@@ -53,6 +55,7 @@ protected:
 
 	void TraceUnderCrosshair(FHitResult& TraceHitResult);
 
+	void CalculateCrosshairSpread(float DeltaTime);
 	void SetHUDCrosshairs(float DeltaTime);
 
 private:
@@ -77,7 +80,7 @@ private:
 	/*
 	 * Hud And Crosshairs
 	 */
-
+	FHUDPackage HUDPackage;
 	float CrosshairVelocityFactor;
 	float CrosshairInAirFactor;
 	float CrosshairAimFactor;

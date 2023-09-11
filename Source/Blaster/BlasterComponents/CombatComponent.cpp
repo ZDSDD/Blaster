@@ -7,7 +7,6 @@
 #include "Blaster/Character/BlasterCharacter.h"
 #include "Blaster/Weapon/Weapon.h"
 #include "Blaster/PlayerController/Blaster_PlayerController.h"
-#include "Blaster/HUD/BlasterHUD.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/SkeletalMeshSocket.h"
@@ -99,7 +98,7 @@ void UCombatComponent::FireButtonPressed(const bool Pressed)
 		FHitResult HitResult;
 		TraceUnderCrosshair(HitResult);
 		ServerFire(HitResult.ImpactPoint);
-		CrosshairShootingFactor = 0.44f;
+		CrosshairShootingFactor = 2.f;
 	}
 }
 
@@ -133,38 +132,19 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 		{
 			TraceHitResult.ImpactPoint = End;
 		}
+		if (TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UInteractWithCrosshairsInterface>())
+		{
+			HUDPackage.CrosshairColor = FLinearColor::Red;
+		}
+		else
+		{
+			HUDPackage.CrosshairColor = FLinearColor::White;
+		}
 	}
 }
 
-void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
+void UCombatComponent::CalculateCrosshairSpread(float DeltaTime)
 {
-	if (!Character || !Character->Controller) return;
-
-	Controller = Controller == nullptr ? Cast<ABlaster_PlayerController>(Character->Controller) : Controller;
-	if (!Controller) return;
-
-	HUD = HUD == nullptr ? Cast<ABlasterHUD>(Controller->GetHUD()) : HUD;
-	if (!HUD) return;
-
-	FHUDPackage FHUDPackage;
-	if (EquippedWeapon)
-	{
-		FHUDPackage.Crosshairscenter = EquippedWeapon->CrosshairCenter;
-		FHUDPackage.CrosshairsLeft = EquippedWeapon->CrosshairLeft;
-		FHUDPackage.CrosshairsRight = EquippedWeapon->CrosshairRight;
-		FHUDPackage.CrosshairsTop = EquippedWeapon->CrosshairTop;
-		FHUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairDown;
-	}
-	else
-	{
-		FHUDPackage.Crosshairscenter = nullptr;
-		FHUDPackage.CrosshairsLeft = nullptr;
-		FHUDPackage.CrosshairsRight = nullptr;
-		FHUDPackage.CrosshairsTop = nullptr;
-		FHUDPackage.CrosshairsBottom = nullptr;
-	}
-	//Calculate crosshair spread
-
 	//[0,600] -> [0,1]
 	FVector2d WalkSpeedRange(0.f, Character->GetCharacterMovement()->MaxWalkSpeed);
 	FVector2d VelocityMultiplayerRange(0.f, 1.f);
@@ -179,27 +159,53 @@ void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
 	}
 	else
 	{
-		CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 0.f, DeltaTime, 30.f);
+		CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 0.f, DeltaTime, 15.f);
 	}
 
 	if (bIsAiming)
 	{
-		CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, 0.58f, DeltaTime, 30.f);
+		CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, 0.58f, DeltaTime, 15.f);
 	}
 	else
 	{
-		CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, 0.f, DeltaTime, 30.f);
+		CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, 0.f, DeltaTime, 15.f);
 	}
 
-	CrosshairShootingFactor = FMath::FInterpTo(CrosshairShootingFactor, 0.f, DeltaTime,40);
-	FHUDPackage.CrosshairSpread =
+	CrosshairShootingFactor = FMath::FInterpTo(CrosshairShootingFactor, 0.f, DeltaTime, 5.f);
+	HUDPackage.CrosshairSpread =
 		0.5f +
 		CrosshairVelocityFactor +
 		CrosshairInAirFactor -
 		CrosshairAimFactor +
 		CrosshairShootingFactor;
-	
-	HUD->SetHUDPackage(FHUDPackage);
+}
+
+void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
+{
+	if (!Character || !Character->Controller) return;
+	Controller = Controller ? Controller : Cast<ABlaster_PlayerController>(Character->Controller);
+	if (!Controller) return;
+	HUD = HUD ? HUD : Cast<ABlasterHUD>(Controller->GetHUD());
+	if (!HUD) return;
+
+	if (EquippedWeapon)
+	{
+		HUDPackage.Crosshairscenter = EquippedWeapon->CrosshairCenter;
+		HUDPackage.CrosshairsLeft = EquippedWeapon->CrosshairLeft;
+		HUDPackage.CrosshairsRight = EquippedWeapon->CrosshairRight;
+		HUDPackage.CrosshairsTop = EquippedWeapon->CrosshairTop;
+		HUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairDown;
+	}
+	else
+	{
+		HUDPackage.Crosshairscenter = nullptr;
+		HUDPackage.CrosshairsLeft = nullptr;
+		HUDPackage.CrosshairsRight = nullptr;
+		HUDPackage.CrosshairsTop = nullptr;
+		HUDPackage.CrosshairsBottom = nullptr;
+	}
+	CalculateCrosshairSpread(DeltaTime);
+	HUD->SetHUDPackage(HUDPackage);
 }
 
 void UCombatComponent::InterpFOV(float DeltaTime)
@@ -238,7 +244,8 @@ void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& Trac
 
 void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 {
-	if (!Character || !WeaponToEquip) return;
+	if (!Character || !WeaponToEquip)
+		return;
 
 	EquippedWeapon = WeaponToEquip;
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);

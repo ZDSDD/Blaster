@@ -16,6 +16,9 @@ class BLASTER_API UBlasterAnimInstance : public UAnimInstance
 	
 public:
 	virtual void NativeInitializeAnimation() override;
+	void UpdateVariables();
+	void UpdateAimOffsetYawAndPitch(float DeltaSeconds);
+	void UpdateHandPlacement(float DeltaSeconds);
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
 private:
@@ -23,53 +26,64 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
 	class ABlasterCharacter* BlasterCharacter;
 	
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+private:
+
+	/*
+	 *	MOVEMENT RELATED VARIABLES
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "Character movement", meta = (AllowPrivateAccess = "true"))
 	float Speed;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character movement", meta = (AllowPrivateAccess = "true"))
 	bool bIsInAir;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character movement", meta = (AllowPrivateAccess = "true"))
 	bool bIsAccelerating;
-	
-private:
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
-	bool bWeaponEquipped;
 
-	class AWeapon * EquippedWeapon;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character movement", meta = (AllowPrivateAccess = "true"))
 	bool bIsCrouched;
 	
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character movement", meta = (AllowPrivateAccess = "true"))
+	float Lean;
+	
+private:
+
+	/*
+	 * COMBAT RELATED VARIABLES
+	 */
+	
+	UPROPERTY()
+	class AWeapon * EquippedWeapon;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Character combat", meta = (AllowPrivateAccess = "true"))
+	bool bWeaponEquipped;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Character combat", meta = (AllowPrivateAccess = "true"))
 	bool bIsAiming;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character combat", meta = (AllowPrivateAccess = "true"))
 	float YawOffset;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
-	float Lean;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Character combat", meta = (AllowPrivateAccess = "true"))
 	float AO_Yaw;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character combat", meta = (AllowPrivateAccess = "true"))
 	float AO_Pitch;
 	
 private:
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character position", meta = (AllowPrivateAccess = "true"))
 	FTransform LeftHandTransform;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character position", meta = (AllowPrivateAccess = "true"))
 	ETurningInPlace TurningInPlace;
 	
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character position", meta = (AllowPrivateAccess = "true"))
 	FRotator RightHandRotation;
 	
-	UPROPERTY(BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = "Character position", meta = (AllowPrivateAccess = "true"))
 	bool bLocallyController;
 
-	
+private:
 	FRotator CharacterRotationLastFrame;
 	FRotator CharacterRotation;
 	FRotator DeltaRotator;
