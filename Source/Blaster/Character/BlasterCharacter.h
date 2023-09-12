@@ -27,14 +27,18 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PostInitializeComponents() override;
-	void PlayFireMontage(bool bAiming);
+	void PlayFireMontage(bool bAiming) const;
+	
+	void PlayHitReactMontage();
+	UFUNCTION(NetMulticast,Unreliable)
+	void MulticastHit();
 
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	//	CAMERA
-	
+
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class USpringArmComponent* CameraBoom;
 	UPROPERTY(VisibleAnywhere, Category = Camera)
@@ -42,12 +46,12 @@ private:
 
 	void HideCharacterIfCameraClose() const;
 
-	UPROPERTY(EditAnywhere,meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"))
 	float CameraThreshold = 200.f;
 
 private:
 	//	HUD
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* OverheadWidget;
 
@@ -100,24 +104,24 @@ protected:
 	void FireButtonPressed();
 	void FireButtonReleased();
 
-public: 	//Setters
+public: //Setters
 	void SetOverlappingWeapon(AWeapon* Weapon);
-	
-public:		//Getters
+
+public: //Getters
 	bool IsWeaponEquipped() const;
-	bool IsAiming();
+	bool IsAiming() const;
 	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; }
 	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; }
 	FORCEINLINE auto GetCamera() const { return FollowCamera; }
-	AWeapon* GetEquippedWeapon();
+	AWeapon* GetEquippedWeapon() const;
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; }
-	FVector GetHitTarget()const;
-	
+	FVector GetHitTarget() const;
+
 public:
 	void TurnInPlace(float DeltaTime);
 
 protected:
-	void DrawDebugVelocityVector();
+	void DrawDebugVelocityVector() const;
 
 private:
 	float AO_Yaw;
@@ -125,6 +129,14 @@ private:
 	float AO_Pitch;
 	FRotator StartingAimRotation;
 	ETurningInPlace TurningInPlace;
+
+private:
+	//MONTAGES
+	
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	class UAnimMontage* FireMontage;
+	UAnimMontage* FireMontage;
+
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	UAnimMontage* HitReactMontage;
+
 };

@@ -10,6 +10,7 @@
 #include "InputMappingContext.h"
 #include "Blaster/BlasterComponents/CombatComponent.h"
 #include "Blaster/Weapon/Weapon.h"
+#include "Blaster/Blaster.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -34,7 +35,7 @@ ABlasterCharacter::ABlasterCharacter()
 	//Camera settings
 	this->FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	this->FollowCamera->bUsePawnControlRotation = false;
-	bUseControllerRotationYaw = false;
+	this->bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 
 	//Widget settings
@@ -47,13 +48,14 @@ ABlasterCharacter::ABlasterCharacter()
 
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
+	GetMesh()->SetCollisionObjectType(ECC_BlasterSM);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
-	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
-	NetUpdateFrequency = 66.f;
-	MinNetUpdateFrequency = 33.f;
+	this->TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+	this->NetUpdateFrequency = 66.f;
+	this->MinNetUpdateFrequency = 33.f;
 }
 
 void ABlasterCharacter::BeginPlay()
@@ -131,9 +133,9 @@ void ABlasterCharacter::CrouchButtonReleased()
 
 void ABlasterCharacter::ServerEquipButtonPressed_Implementation()
 {
-	if (this->CombatComponent)
+	if (CombatComponent)
 	{
-		this->CombatComponent->EquipWeapon(OverlappingWeapon);
+		CombatComponent->EquipWeapon(OverlappingWeapon);
 	}
 }
 
@@ -196,28 +198,47 @@ void ABlasterCharacter::PostInitializeComponents()
 	}
 }
 
-void ABlasterCharacter::PlayFireMontage(bool bAiming)
+void ABlasterCharacter::PlayFireMontage(bool bAiming) const
 {
-	if (!CombatComponent || !CombatComponent->EquippedWeapon) return;
+	if (!this->CombatComponent || !this->CombatComponent->EquippedWeapon) return;
 
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && FireMontage)
+	if (AnimInstance && this->FireMontage)
 	{
-		AnimInstance->Montage_Play(FireMontage);
+		AnimInstance->Montage_Play(this->FireMontage);
 		FName SectionName = bAiming ? FName("RifleAim") : FName("RifleHip");
 		AnimInstance->Montage_JumpToSection(SectionName);
 	}
 }
+
+void ABlasterCharacter::PlayHitReactMontage()
+{
+	if (!this->CombatComponent || !this->CombatComponent->EquippedWeapon) return;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && this->HitReactMontage)
+	{
+		AnimInstance->Montage_Play(this->HitReactMontage);
+		FName SectionName = FName("FromFront");
+		AnimInstance->Montage_JumpToSection(SectionName);
+	}
+}
+
+
+void ABlasterCharacter::MulticastHit_Implementation()
+{
+	PlayHitReactMontage();
+}
+
 
 void ABlasterCharacter::Move(const FInputActionValue& Value)
 {
 	// input is a Vector2D
 	const FVector2D MovementVector = Value.Get<FVector2D>();
 
-	if (Controller != nullptr)
+	if (this->Controller != nullptr)
 	{
 		// find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
+		const FRotator Rotation = this->Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
 		// get forward vector
@@ -235,9 +256,9 @@ void ABlasterCharacter::Move(const FInputActionValue& Value)
 void ABlasterCharacter::Look(const FInputActionValue& Value)
 {
 	// input is a Vector2D
-	FVector2D LookAxisVector = Value.Get<FVector2D>();
+	const FVector2D LookAxisVector = Value.Get<FVector2D>();
 
-	if (Controller != nullptr)
+	if (this->Controller != nullptr)
 	{
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
@@ -247,105 +268,105 @@ void ABlasterCharacter::Look(const FInputActionValue& Value)
 
 void ABlasterCharacter::AimButtonPressed()
 {
-	if (CombatComponent)
+	if (this->CombatComponent)
 	{
-		CombatComponent->SetAiming(true);
+		this->CombatComponent->SetAiming(true);
 	}
 }
 
 void ABlasterCharacter::AimButtonReleased()
 {
-	if (CombatComponent)
+	if (this->CombatComponent)
 	{
-		CombatComponent->SetAiming(false);
+		this->CombatComponent->SetAiming(false);
 	}
 }
 
-void ABlasterCharacter::AimOffset(float DeltaTime)
+void ABlasterCharacter::AimOffset(const float DeltaTime)
 {
-	if (CombatComponent && !CombatComponent->EquippedWeapon) return;
+	if (this->CombatComponent && !this->CombatComponent->EquippedWeapon) return;
 	FVector Velocity = GetVelocity();
 	Velocity.Z = 0.f;
-	float Speed = Velocity.Size();
-	bool bIsInAir = GetCharacterMovement()->IsFalling();
+	const float Speed = Velocity.Size();
+	const bool bIsInAir = GetCharacterMovement()->IsFalling();
 
 	/*
 	 * Setting-up the Aim Offset YAW and PITCH
 	 */
 	if (Speed == 0.f && !bIsInAir) //Standing still, not jumping
 	{
-		FRotator CurrentAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
-		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, StartingAimRotation);
-		AO_Yaw = DeltaAimRotation.Yaw;
-		if (TurningInPlace == ETurningInPlace::ETIP_NotTurning)
+		const FRotator CurrentAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		const FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, this->StartingAimRotation);
+		this->AO_Yaw = DeltaAimRotation.Yaw;
+		if (this->TurningInPlace == ETurningInPlace::ETIP_NotTurning)
 		{
-			InterpAO_Yaw = AO_Yaw;
+			this->InterpAO_Yaw = AO_Yaw;
 		}
-		bUseControllerRotationYaw = true;
+		this->bUseControllerRotationYaw = true;
 		TurnInPlace(DeltaTime);
 	}
 	if (Speed > 0.f || bIsInAir) //Running or jumping
 	{
-		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
-		AO_Yaw = 0.f;
-		bUseControllerRotationYaw = true;
-		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+		this->StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		this->AO_Yaw = 0.f;
+		this->bUseControllerRotationYaw = true;
+		this->TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 	}
-	AO_Pitch = GetBaseAimRotation().Pitch;
-	if (AO_Pitch > 90.f && !IsLocallyControlled())
+	this->AO_Pitch = GetBaseAimRotation().Pitch;
+	if (this->AO_Pitch > 90.f && !IsLocallyControlled())
 	{
 		//Map pitch from [270, 360) to [-90,0)
-		FVector2D InRange(270.f, 360.f);
-		FVector2D OutRange(-90.f, 0.f);
-		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch);
+		const FVector2D InRange(270.f, 360.f);
+		const FVector2D OutRange(-90.f, 0.f);
+		this->AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, this->AO_Pitch);
 	}
 }
 
 void ABlasterCharacter::FireButtonPressed()
 {
-	if (CombatComponent)
+	if (this->CombatComponent)
 	{
-		CombatComponent->FireButtonPressed(true);
+		this->CombatComponent->FireButtonPressed(true);
 	}
 }
 
 void ABlasterCharacter::FireButtonReleased()
 {
-	if (CombatComponent)
+	if (this->CombatComponent)
 	{
-		CombatComponent->FireButtonPressed(false);
+		this->CombatComponent->FireButtonPressed(false);
 		UE_LOG(LogTemp, Warning, TEXT("FireButtonReleased"));
 	}
 }
 
 FVector ABlasterCharacter::GetHitTarget() const
 {
-	if (CombatComponent)
+	if (this->CombatComponent)
 	{
-		return CombatComponent->HitTarget;
+		return this->CombatComponent->HitTarget;
 	}
 
 	return FVector();
 }
 
-void ABlasterCharacter::TurnInPlace(float DeltaTime)
+void ABlasterCharacter::TurnInPlace(const float DeltaTime)
 {
-	if (AO_Yaw > 90.f)
+	if (this->AO_Yaw > 90.f)
 	{
-		TurningInPlace = ETurningInPlace::ETIP_Right;
+		this->TurningInPlace = ETurningInPlace::ETIP_Right;
 	}
 	else if (AO_Yaw < -90.f)
 	{
-		TurningInPlace = ETurningInPlace::ETIP_Left;
+		this->TurningInPlace = ETurningInPlace::ETIP_Left;
 	}
-	if (TurningInPlace != ETurningInPlace::ETIP_NotTurning)
+	if (this->TurningInPlace != ETurningInPlace::ETIP_NotTurning)
 	{
-		InterpAO_Yaw = FMath::FInterpTo(InterpAO_Yaw, 0.f, DeltaTime, 5.f);
-		AO_Yaw = InterpAO_Yaw;
+		this->InterpAO_Yaw = FMath::FInterpTo(this->InterpAO_Yaw, 0.f, DeltaTime, 5.f);
+		this->AO_Yaw = this->InterpAO_Yaw;
 		if (FMath::Abs(AO_Yaw) < 15.f)
 		{
-			TurningInPlace = ETurningInPlace::ETIP_NotTurning;
-			StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+			this->TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+			this->StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
 		}
 	}
 }
@@ -354,13 +375,13 @@ void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 {
 	if (this->OverlappingWeapon)
 	{
-		OverlappingWeapon->ShowPickupWidget(false);
+		this->OverlappingWeapon->ShowPickupWidget(false);
 	}
 	this->OverlappingWeapon = Weapon;
 
-	if (IsLocallyControlled() && OverlappingWeapon)
+	if (IsLocallyControlled() && this->OverlappingWeapon)
 	{
-		OverlappingWeapon->ShowPickupWidget(true);
+		this->OverlappingWeapon->ShowPickupWidget(true);
 	}
 }
 
@@ -369,12 +390,12 @@ bool ABlasterCharacter::IsWeaponEquipped() const
 	return CombatComponent && CombatComponent->EquippedWeapon;
 }
 
-bool ABlasterCharacter::IsAiming()
+bool ABlasterCharacter::IsAiming() const
 {
 	return CombatComponent && CombatComponent->bIsAiming;
 }
 
-AWeapon* ABlasterCharacter::GetEquippedWeapon()
+AWeapon* ABlasterCharacter::GetEquippedWeapon() const
 {
 	if (!CombatComponent) return nullptr;
 
@@ -382,7 +403,7 @@ AWeapon* ABlasterCharacter::GetEquippedWeapon()
 }
 
 
-void ABlasterCharacter::DrawDebugVelocityVector()
+void ABlasterCharacter::DrawDebugVelocityVector() const
 {
 	auto velocity = GetVelocity();
 	auto ActorLocation = this->GetActorLocation();
