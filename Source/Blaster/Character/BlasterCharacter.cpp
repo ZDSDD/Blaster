@@ -73,8 +73,24 @@ void ABlasterCharacter::BeginPlay()
 		}
 	}
 }
+/*
+ * Hides the meshes if camera is too close to the player.
+ * Meshes are invisible only to the locally controlled player. Other client can still see the meshes
+ */
+void ABlasterCharacter::HideCharacterIfCameraClose() const
+{
+	if(!IsLocallyControlled() || !FollowCamera || !GetMesh())return;
+	//	FollowCamera->GetComponentLocation() - GetActorLocation() gives vector. Size() gives the length of this vector;
+	const bool bShouldHideMeshes{ (FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraThreshold };
+		GetMesh()->SetVisibility(!bShouldHideMeshes);
+		if(CombatComponent && CombatComponent->EquippedWeapon && CombatComponent->EquippedWeapon->GetWeaponMesh())
+		{
+			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = bShouldHideMeshes;
+		}
 
-void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
+}
+
+void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon) const
 {
 	if (OverlappingWeapon)
 	{
@@ -125,8 +141,8 @@ void ABlasterCharacter::ServerEquipButtonPressed_Implementation()
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 	AimOffset(DeltaTime);
+	HideCharacterIfCameraClose();
 }
 
 

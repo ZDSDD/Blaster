@@ -34,13 +34,20 @@ protected:
 
 private:
 	//	CAMERA
+	
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class USpringArmComponent* CameraBoom;
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent* FollowCamera;
 
+	void HideCharacterIfCameraClose() const;
+
+	UPROPERTY(EditAnywhere,meta = (AllowPrivateAccess = "true"))
+	float CameraThreshold = 200.f;
+
 private:
 	//	HUD
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* OverheadWidget;
 
@@ -50,7 +57,7 @@ private:
 	AWeapon* OverlappingWeapon;
 
 	UFUNCTION()
-	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
+	void OnRep_OverlappingWeapon(AWeapon* LastWeapon) const;
 
 private:
 	//	COMBAT

@@ -3,11 +3,9 @@
 
 #include "CombatComponent.h"
 
-#include "ParticleHelper.h"
 #include "Blaster/Character/BlasterCharacter.h"
 #include "Blaster/Weapon/Weapon.h"
 #include "Blaster/PlayerController/Blaster_PlayerController.h"
-#include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -59,7 +57,7 @@ void UCombatComponent::TickComponent(const float DeltaTime, const ELevelTick Tic
 	}
 }
 
-void UCombatComponent::SetAiming(bool bAiming)
+void UCombatComponent::SetAiming(const bool bAiming)
 {
 	bIsAiming = bAiming;
 	// We can set it here too, so there is no need to wait for the server callback with information about aiming
@@ -71,7 +69,7 @@ void UCombatComponent::SetAiming(bool bAiming)
 	}
 }
 
-void UCombatComponent::ServerSetAiming_Implementation(bool bAiming)
+void UCombatComponent::ServerSetAiming_Implementation(const bool bAiming)
 {
 	bIsAiming = bAiming;
 	if (Character && EquippedWeapon)
@@ -80,7 +78,7 @@ void UCombatComponent::ServerSetAiming_Implementation(bool bAiming)
 	}
 }
 
-void UCombatComponent::OnRep_EquippedWeapon()
+void UCombatComponent::OnRep_EquippedWeapon() const
 {
 	if (EquippedWeapon && Character)
 	{
@@ -102,6 +100,10 @@ void UCombatComponent::FireButtonPressed(const bool Pressed)
 	}
 }
 
+/*
+ *	Starts trace from the middle of the camera to the crosshair middle direction
+ *	If any other blaster character was hit, changes the crosshair color to RED
+ */
 void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 {
 	FVector2D ViewportSize;
@@ -110,36 +112,45 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 		GEngine->GameViewport->GetViewportSize(ViewportSize);
 	}
 
-	FVector2D CrosshairLocation(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
+	const FVector2D CrosshairLocation(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
 	FVector CrosshairWorldPosition;
 	FVector CrosshairWorldDirection;
-	bool ScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(
+	
+	if (!UGameplayStatics::DeprojectScreenToWorld(
 		UGameplayStatics::GetPlayerController(this, 0),
 		CrosshairLocation,
 		CrosshairWorldPosition,
-		CrosshairWorldDirection
-	);
-
-	if (ScreenToWorld)
+		CrosshairWorldDirection))
 	{
-		FVector Start = CrosshairWorldPosition;
-		FVector End = Start + CrosshairWorldDirection * TRACE_LENGTH;
-		if (!GetWorld()->LineTraceSingleByChannel(
-			TraceHitResult,
-			Start,
-			End,
-			ECC_Visibility))
-		{
-			TraceHitResult.ImpactPoint = End;
-		}
-		if (TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UInteractWithCrosshairsInterface>() && TraceHitResult.GetActor() != Character)
-		{
-			HUDPackage.CrosshairColor = FLinearColor::Red;
-		}
-		else
-		{
-			HUDPackage.CrosshairColor = FLinearColor::White;
-		}
+		return;
+	}
+
+	FVector Start = CrosshairWorldPosition;
+
+	// Push the start of the trace (that is the camera) more to the front (approximately to the Character location)
+	if (Character)
+	{
+		const float DistanceToCharacter = (Character->GetActorLocation() - Start).Size();
+		Start += CrosshairWorldDirection * DistanceToCharacter;
+	}
+
+	//End location of the ray trace
+	const FVector End = Start + CrosshairWorldDirection * TRACE_LENGTH;
+
+	//No hit
+	if (!GetWorld()->LineTraceSingleByChannel(TraceHitResult, Start, End, ECC_Visibility))
+	{
+		TraceHitResult.ImpactPoint = End;
+	}
+	//Traced other blaster character
+	if (TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UInteractWithCrosshairsInterface>() &&
+		TraceHitResult.GetActor() != Character)
+	{
+		HUDPackage.CrosshairColor = FLinearColor::Red;
+	}
+	else
+	{
+		HUDPackage.CrosshairColor = FLinearColor::White;
 	}
 }
 
