@@ -41,6 +41,7 @@ void UBlasterAnimInstance::UpdateVariables()
 	UpdateMovementVariables();
 	UpdateCombatVariables();
 	TurningInPlace = BlasterCharacter->GetTurningInPlace();
+	bRotateRootBone = BlasterCharacter->ShouldRotateRootBone();
 }
 
 void UBlasterAnimInstance::UpdateAimOffsetYawAndPitch(float DeltaSeconds)
@@ -84,7 +85,7 @@ void UBlasterAnimInstance::UpdateHandPlacement(float DeltaSeconds)
 
 	if (BlasterCharacter->IsLocallyControlled())
 	{
-		bLocallyController = true;
+		bLocallyControlled = true;
 		FTransform RightHandTransform = BlasterCharacter->GetMesh()->GetSocketTransform(FName("Hand_R"), RTS_World);
 		FRotator LookAtoRotation = UKismetMathLibrary::FindLookAtRotation(RightHandTransform.GetLocation(),
 		                                                                  RightHandTransform.GetLocation() + (

@@ -58,6 +58,34 @@ ABlasterCharacter::ABlasterCharacter()
 	this->MinNetUpdateFrequency = 33.f;
 }
 
+void ABlasterCharacter::OnRep_ReplicatedMovement()
+{
+	Super::OnRep_ReplicatedMovement();
+
+	SimProxiesTurn();
+
+	TimeSinceLastMovementReplication = 0.f;
+}
+
+void ABlasterCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	if (GetLocalRole() > ROLE_SimulatedProxy && IsLocallyControlled())
+	{
+		AimOffset(DeltaTime);
+	}
+	else //
+	{
+		TimeSinceLastMovementReplication += DeltaTime;
+		if (TimeSinceLastMovementReplication > 0.25f)
+		{
+			OnRep_ReplicatedMovement();
+		}
+		CalculateAO_Pitch();
+	}
+	HideCharacterIfCameraClose();
+}
+
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -75,21 +103,21 @@ void ABlasterCharacter::BeginPlay()
 		}
 	}
 }
+
 /*
  * Hides the meshes if camera is too close to the player.
  * Meshes are invisible only to the locally controlled player. Other client can still see the meshes
  */
 void ABlasterCharacter::HideCharacterIfCameraClose() const
 {
-	if(!IsLocallyControlled() || !FollowCamera || !GetMesh())return;
+	if (!IsLocallyControlled() || !FollowCamera || !GetMesh())return;
 	//	FollowCamera->GetComponentLocation() - GetActorLocation() gives vector. Size() gives the length of this vector;
-	const bool bShouldHideMeshes{ (FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraThreshold };
-		GetMesh()->SetVisibility(!bShouldHideMeshes);
-		if(CombatComponent && CombatComponent->EquippedWeapon && CombatComponent->EquippedWeapon->GetWeaponMesh())
-		{
-			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = bShouldHideMeshes;
-		}
-
+	const bool bShouldHideMeshes{(FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraThreshold};
+	GetMesh()->SetVisibility(!bShouldHideMeshes);
+	if (CombatComponent && CombatComponent->EquippedWeapon && CombatComponent->EquippedWeapon->GetWeaponMesh())
+	{
+		CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = bShouldHideMeshes;
+	}
 }
 
 void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon) const
@@ -137,14 +165,6 @@ void ABlasterCharacter::ServerEquipButtonPressed_Implementation()
 	{
 		CombatComponent->EquipWeapon(OverlappingWeapon);
 	}
-}
-
-
-void ABlasterCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-	AimOffset(DeltaTime);
-	HideCharacterIfCameraClose();
 }
 
 
@@ -282,12 +302,30 @@ void ABlasterCharacter::AimButtonReleased()
 	}
 }
 
+void ABlasterCharacter::CalculateAO_Pitch()
+{
+	this->AO_Pitch = GetBaseAimRotation().Pitch;
+	if (this->AO_Pitch > 90.f && !IsLocallyControlled())
+	{
+		//Map pitch from [270, 360) to [-90,0)
+		const FVector2D InRange(270.f, 360.f);
+		const FVector2D OutRange(-90.f, 0.f);
+		this->AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, this->AO_Pitch);
+	}
+}
+
+float ABlasterCharacter::CalculateSpeed() const
+{
+	FVector Velocity = GetVelocity();
+	Velocity.Z = 0.f;
+	return Velocity.Size();
+}
+
 void ABlasterCharacter::AimOffset(const float DeltaTime)
 {
 	if (this->CombatComponent && !this->CombatComponent->EquippedWeapon) return;
-	FVector Velocity = GetVelocity();
-	Velocity.Z = 0.f;
-	const float Speed = Velocity.Size();
+	
+	const float Speed = CalculateSpeed();
 	const bool bIsInAir = GetCharacterMovement()->IsFalling();
 
 	/*
@@ -295,8 +333,10 @@ void ABlasterCharacter::AimOffset(const float DeltaTime)
 	 */
 	if (Speed == 0.f && !bIsInAir) //Standing still, not jumping
 	{
+		bRotateRootBone = true;
 		const FRotator CurrentAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
-		const FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, this->StartingAimRotation);
+		const FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(
+			CurrentAimRotation, this->StartingAimRotation);
 		this->AO_Yaw = DeltaAimRotation.Yaw;
 		if (this->TurningInPlace == ETurningInPlace::ETIP_NotTurning)
 		{
@@ -307,19 +347,49 @@ void ABlasterCharacter::AimOffset(const float DeltaTime)
 	}
 	if (Speed > 0.f || bIsInAir) //Running or jumping
 	{
+		bRotateRootBone = false;
 		this->StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
 		this->AO_Yaw = 0.f;
 		this->bUseControllerRotationYaw = true;
 		this->TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 	}
-	this->AO_Pitch = GetBaseAimRotation().Pitch;
-	if (this->AO_Pitch > 90.f && !IsLocallyControlled())
+	CalculateAO_Pitch();
+}
+
+void ABlasterCharacter::SimProxiesTurn()
+{
+	if (!CombatComponent || !CombatComponent->EquippedWeapon) return;
+	
+	bRotateRootBone = false;
+
+	if(CalculateSpeed() > 0)
 	{
-		//Map pitch from [270, 360) to [-90,0)
-		const FVector2D InRange(270.f, 360.f);
-		const FVector2D OutRange(-90.f, 0.f);
-		this->AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, this->AO_Pitch);
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+		return;
 	}
+	
+	
+	ProxyRotationLastFrame = ProxyRotation;
+	ProxyRotation = GetActorRotation();
+	ProxyYaw = UKismetMathLibrary::NormalizedDeltaRotator(ProxyRotation, ProxyRotationLastFrame).Yaw;
+
+	if (FMath::Abs(ProxyYaw) > TurnThreshold)
+	{
+		if (ProxyYaw > TurnThreshold)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Right;
+		}
+		else if (ProxyYaw < -TurnThreshold)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Left;
+		}
+		else
+		{
+			TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+		}
+		return;
+	}
+	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 }
 
 void ABlasterCharacter::FireButtonPressed()

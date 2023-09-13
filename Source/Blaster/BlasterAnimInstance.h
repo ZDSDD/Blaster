@@ -73,6 +73,11 @@ private:
 	float AO_Pitch;
 	
 private:
+
+	/*
+	 * BONE PLACEMENT, ROTATION
+	 */
+	
 	UPROPERTY(BlueprintReadOnly, Category = "Character position", meta = (AllowPrivateAccess = "true"))
 	FTransform LeftHandTransform;
 
@@ -83,7 +88,10 @@ private:
 	FRotator RightHandRotation;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Character position", meta = (AllowPrivateAccess = "true"))
-	bool bLocallyController;
+	bool bLocallyControlled;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Character position", meta = (AllowPrivateAccess = "true"))
+	bool bRotateRootBone;
 
 private:
 	FRotator CharacterRotationLastFrame;

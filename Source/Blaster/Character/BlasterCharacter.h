@@ -28,10 +28,12 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PostInitializeComponents() override;
 	void PlayFireMontage(bool bAiming) const;
-	
+
 	void PlayHitReactMontage();
-	UFUNCTION(NetMulticast,Unreliable)
+	UFUNCTION(NetMulticast, Unreliable)
 	void MulticastHit();
+
+	virtual void OnRep_ReplicatedMovement() override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -100,7 +102,10 @@ protected:
 	void CrouchButtonReleased();
 	void AimButtonPressed();
 	void AimButtonReleased();
+	void CalculateAO_Pitch();
+	float CalculateSpeed() const;
 	void AimOffset(float DeltaTime);
+	void SimProxiesTurn();
 	void FireButtonPressed();
 	void FireButtonReleased();
 
@@ -119,6 +124,7 @@ public: //Getters
 
 public:
 	void TurnInPlace(float DeltaTime);
+	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 
 protected:
 	void DrawDebugVelocityVector() const;
@@ -131,12 +137,22 @@ private:
 	ETurningInPlace TurningInPlace;
 
 private:
-	//MONTAGES
+	/* Variables related to rotating the character */
 	
+	bool bRotateRootBone;
+	UPROPERTY(EditAnywhere)
+	float TurnThreshold {1.f};
+	FRotator ProxyRotationLastFrame;
+	FRotator ProxyRotation;
+	float ProxyYaw;
+	float TimeSinceLastMovementReplication;
+
+private:
+	//MONTAGES
+
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	UAnimMontage* FireMontage;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	UAnimMontage* HitReactMontage;
-
 };
