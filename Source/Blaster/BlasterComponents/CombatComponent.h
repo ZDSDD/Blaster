@@ -78,15 +78,16 @@ private:
 	float AimWalkSpeed;
 
 	/*
-	 * Hud And Crosshairs
+	 * Hud And Crosshair
 	 */
-	FHUDPackage HUDPackage;
-	float CrosshairVelocityFactor;
-	float CrosshairInAirFactor;
-	float CrosshairAimFactor;
-	float CrosshairShootingFactor;
-
-	FVector HitTarget;
+	FHUDPackage HUDPackage{};
+	float CrosshairVelocityFactor{0};
+	float CrosshairInAirFactor{0};
+	float CrosshairAimFactor{0};
+	float CrosshairShootingFactor{0};
+	float CrosshairOnEnemyFactor{0};
+	void SetCrosshairFactors(float DeltaTime);
+	FVector HitTarget{};
 
 	/*
 	 * Aiming and FOV
@@ -102,6 +103,8 @@ private:
 
 	UPROPERTY(EditAnywhere, Category="Combat")
 	float ZoomInterpSpeed{20.f};
+
+	bool bEnemyUnderCrosshair;
 
 	void InterpFOV(float DeltaTime);
 	
