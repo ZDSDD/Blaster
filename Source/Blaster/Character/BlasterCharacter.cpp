@@ -86,6 +86,8 @@ void ABlasterCharacter::Tick(float DeltaTime)
 	HideCharacterIfCameraClose();
 }
 
+
+
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -194,10 +196,16 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this,
 		                                   &ABlasterCharacter::AimButtonReleased);
 		//	Shoot
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Started, this,
+		                                   &ABlasterCharacter::FireButtonStarted);
 		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered, this,
 		                                   &ABlasterCharacter::FireButtonPressed);
 		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Canceled, this,
 		                                   &ABlasterCharacter::FireButtonReleased);
+		
+		EnhancedInputComponent->BindAction(SwitchAutoFireRifle, ETriggerEvent::Started, this,
+		                                   &ABlasterCharacter::SwitchAutoFireButtonPressed);
+		
 	}
 }
 
@@ -394,7 +402,7 @@ void ABlasterCharacter::SimProxiesTurn()
 
 void ABlasterCharacter::FireButtonPressed()
 {
-	if (this->CombatComponent)
+	if (this->CombatComponent && bAutomaticFire)
 	{
 		this->CombatComponent->FireButtonPressed(true);
 	}
@@ -405,8 +413,19 @@ void ABlasterCharacter::FireButtonReleased()
 	if (this->CombatComponent)
 	{
 		this->CombatComponent->FireButtonPressed(false);
-		UE_LOG(LogTemp, Warning, TEXT("FireButtonReleased"));
 	}
+}
+void ABlasterCharacter::FireButtonStarted()
+{
+	if (this->CombatComponent)
+	{
+		this->CombatComponent->FireButtonPressed(true);
+	}
+}
+
+void ABlasterCharacter::SwitchAutoFireButtonPressed()
+{
+	bAutomaticFire ^= true;
 }
 
 FVector ABlasterCharacter::GetHitTarget() const

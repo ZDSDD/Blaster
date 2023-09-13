@@ -24,6 +24,7 @@ class BLASTER_API ABlasterCharacter : public ACharacter, public IInteractWithCro
 public:
 	ABlasterCharacter();
 	virtual void Tick(float DeltaTime) override;
+	void FireButtonStarted();
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PostInitializeComponents() override;
@@ -92,22 +93,46 @@ private:
 	UInputAction* AimAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* FireAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* SwitchAutoFireRifle;
 
 protected:
 	//	Input response
+protected:
+	
 	void Move(const FInputActionValue& Value);
+	
+protected:
+	
 	void Look(const FInputActionValue& Value);
+	
+protected:
+	
 	void EquipButtonPressed();
+	
+protected:
 	void CrouchButtonPresses();
 	void CrouchButtonReleased();
+	
+protected:
+	//AIM
+	
 	void AimButtonPressed();
 	void AimButtonReleased();
+protected:
+	//FIRE
+	
+	void FireButtonPressed();
+	void FireButtonReleased();
+	bool bAutomaticFire{true};
+	void SwitchAutoFireButtonPressed();
+
+protected:
+	
 	void CalculateAO_Pitch();
 	float CalculateSpeed() const;
 	void AimOffset(float DeltaTime);
 	void SimProxiesTurn();
-	void FireButtonPressed();
-	void FireButtonReleased();
 
 public: //Setters
 	void SetOverlappingWeapon(AWeapon* Weapon);
@@ -130,15 +155,13 @@ protected:
 	void DrawDebugVelocityVector() const;
 
 private:
+	/* Variables related to rotating the character */
+	
 	float AO_Yaw;
 	float InterpAO_Yaw;
 	float AO_Pitch;
 	FRotator StartingAimRotation;
 	ETurningInPlace TurningInPlace;
-
-private:
-	/* Variables related to rotating the character */
-	
 	bool bRotateRootBone;
 	UPROPERTY(EditAnywhere)
 	float TurnThreshold {1.f};
